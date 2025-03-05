@@ -17,6 +17,7 @@ class Filme {
     required this.nota,
   });
 
+  // Convertendo o objeto para um mapa
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -24,11 +25,12 @@ class Filme {
       'ano': ano,
       'direcao': direcao,
       'resumo': resumo,
-      'urlCartaz': urlCartaz,
+      'url_cartaz': urlCartaz,
       'nota': nota,
     };
   }
 
+  // Convertendo um mapa para um objeto Filme
   factory Filme.fromMap(Map<String, dynamic> map) {
     return Filme(
       id: map['id'],
@@ -36,7 +38,7 @@ class Filme {
       ano: map['ano'],
       direcao: map['direcao'],
       resumo: map['resumo'],
-      urlCartaz: map['urlCartaz'],
+      urlCartaz: map['url_cartaz'],
       nota: map['nota'],
     );
   }

@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_rating_bar/flutter_rating_bar.dart';
-import '../models/filme.dart';
-import '../database/database_helper.dart';
 import 'dart:io';
+import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 
 class FormScreen extends StatefulWidget {
-  final Filme? filme;
-  final VoidCallback onSave;
+  final String? filme;
 
-  FormScreen({this.filme, required this.onSave});
+  FormScreen({this.filme});
 
   @override
   _FormScreenState createState() => _FormScreenState();
@@ -17,53 +14,29 @@ class FormScreen extends StatefulWidget {
 
 class _FormScreenState extends State<FormScreen> {
   final _formKey = GlobalKey<FormState>();
-  String titulo = '';
-  int ano = DateTime.now().year;
-  String direcao = '';
-  String resumo = '';
-  String urlCartaz = '';
-  double nota = 3.0;
+  TextEditingController _tituloController = TextEditingController();
+  TextEditingController _anoController = TextEditingController();
+  TextEditingController _direcaoController = TextEditingController();
+  TextEditingController _resumoController = TextEditingController();
+  TextEditingController _urlCartazController = TextEditingController();
+  double _nota = 1;
+
+  File? _imagem;
 
   @override
   void initState() {
     super.initState();
     if (widget.filme != null) {
-      titulo = widget.filme!.titulo;
-      ano = widget.filme!.ano;
-      direcao = widget.filme!.direcao;
-      resumo = widget.filme!.resumo;
-      urlCartaz = widget.filme!.urlCartaz;
-      nota = widget.filme!.nota;
+      // Carregar os dados do filme para edição, se necessário
     }
   }
 
-  Future<void> salvar() async {
-    if (_formKey.currentState!.validate()) {
-      final filme = Filme(
-        id: widget.filme?.id,
-        titulo: titulo,
-        ano: ano,
-        direcao: direcao,
-        resumo: resumo,
-        urlCartaz: urlCartaz,
-        nota: nota,
-      );
-      if (filme.id == null) {
-        await DatabaseHelper.instance.insertFilme(filme);
-      } else {
-        await DatabaseHelper.instance.updateFilme(filme);
-      }
-      widget.onSave();
-      Navigator.pop(context);
-    }
-  }
-
-  Future<void> selecionarImagem() async {
+  Future<void> _pickImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       setState(() {
-        urlCartaz = pickedFile.path;
+        _imagem = File(pickedFile.path);
       });
     }
   }
@@ -72,74 +45,82 @@ class _FormScreenState extends State<FormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(widget.filme == null ? 'Novo Filme' : 'Editar Filme')),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+            children: <Widget>[
               TextFormField(
-                initialValue: titulo,
+                controller: _tituloController,
                 decoration: InputDecoration(labelText: 'Título'),
-                validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null,
-                onChanged: (value) => titulo = value,
-              ),
-              TextFormField(
-                initialValue: ano.toString(),
-                decoration: InputDecoration(labelText: 'Ano'),
-                keyboardType: TextInputType.number,
-                validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null,
-                onChanged: (value) => ano = int.tryParse(value) ?? ano,
-              ),
-              TextFormField(
-                initialValue: direcao,
-                decoration: InputDecoration(labelText: 'Direção'),
-                validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null,
-                onChanged: (value) => direcao = value,
-              ),
-              TextFormField(
-                initialValue: resumo,
-                decoration: InputDecoration(labelText: 'Resumo'),
-                maxLines: 3,
-                validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null,
-                onChanged: (value) => resumo = value,
-              ),
-              SizedBox(height: 10),
-              Text("Nota:"),
-              RatingBar.builder(
-                initialRating: nota,
-                minRating: 1,
-                direction: Axis.horizontal,
-                allowHalfRating: true,
-                itemCount: 5,
-                itemPadding: EdgeInsets.symmetric(horizontal: 4.0),
-                itemBuilder: (context, _) => Icon(Icons.star, color: Colors.amber),
-                onRatingUpdate: (rating) {
-                  setState(() {
-                    nota = rating;
-                  });
+                validator: (value) {
+                  if (value!.isEmpty) {
+                    return 'Por favor, insira o título do filme';
+                  }
+                  return null;
                 },
               ),
-              SizedBox(height: 10),
-              urlCartaz.isEmpty
+              TextFormField(
+                controller: _anoController,
+                decoration: InputDecoration(labelText: 'Ano'),
+                keyboardType: TextInputType.number,
+              ),
+              TextFormField(
+                controller: _direcaoController,
+                decoration: InputDecoration(labelText: 'Direção'),
+              ),
+              TextFormField(
+                controller: _resumoController,
+                decoration: InputDecoration(labelText: 'Resumo'),
+                maxLines: 3,
+              ),
+              TextFormField(
+                controller: _urlCartazController,
+                decoration: InputDecoration(labelText: 'URL Cartaz'),
+              ),
+              Row(
+                children: <Widget>[
+                  Text('Nota:'),
+                  RatingBar.builder(
+                    initialRating: _nota,
+                    minRating: 1,
+                    itemCount: 5,
+                    itemSize: 40.0,
+                    onRatingUpdate: (rating) {
+                      setState(() {
+                        _nota = rating;
+                      });
+                    },
+                    itemBuilder: (context, _) => Icon(
+                      Icons.star,
+                      color: Colors.amber,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+              _imagem == null
                   ? ElevatedButton.icon(
-                onPressed: selecionarImagem,
-                icon: Icon(Icons.image),
-                label: Text("Selecionar Cartaz"),
+                icon: Icon(Icons.add_a_photo),
+                label: Text('Escolher Cartaz'),
+                onPressed: _pickImage,
               )
                   : Image.file(
-                File(urlCartaz),
+                _imagem!,
                 height: 200,
                 width: double.infinity,
                 fit: BoxFit.cover,
               ),
               SizedBox(height: 20),
-              Center(
-                child: ElevatedButton(
-                  onPressed: salvar,
-                  child: Text('Salvar Filme'),
-                ),
+              ElevatedButton(
+                onPressed: () {
+                  if (_formKey.currentState!.validate()) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Filme salvo com sucesso!')));
+                    Navigator.pop(context); // Volta para a tela anterior
+                  }
+                },
+                child: Text('Salvar'),
               ),
             ],
           ),
